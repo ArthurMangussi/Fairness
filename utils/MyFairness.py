@@ -12,24 +12,56 @@ from utils.MeLogSingle import MeLogger
 from fairlearn.datasets import (fetch_adult, 
                                 fetch_bank_marketing,
                                 fetch_credit_card,
-                                fetch_diabetes_hospital)
+                                )
 from fairlearn.metrics import (demographic_parity_ratio,                              
                                equalized_odds_ratio,                                
                                equal_opportunity_ratio,
                                demographic_parity_difference,
                                true_negative_rate,
                                MetricFrame)
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 from utils.MyPreprocessing import PreprocessingDatasets
+
+from aif360.algorithms.inprocessing import (GerryFairClassifier,
+                                            MetaFairClassifier,
+                                            PrejudiceRemover,
+                                            AdversarialDebiasing)
+from aif360.metrics import ClassificationMetric
 
 import pandas as pd
 import numpy as np
+
 
 class Fairness:
     def __init__(self):
 
         self._logger = MeLogger()
         self._prep = PreprocessingDatasets()
+
+        self.results_metrics = {
+                    "dataset": [],
+                    "fold": [],
+                    "eq_odds": [],
+                    "av_odds":[],
+                    "av_pred_diff":[],
+                    "cof_variation_allgroups":[],
+                    "entropy_index_allgroups":[],
+                    "theil_index_allgroups":[],
+                    "diff_bias_amplification":[],
+                    "eq_opportunity": [],
+                    "stat_parity": [],
+                    "error_rate":[],
+                    "false_discovery_rate_dif":[],
+                    "false_negative_rate_diff":[],
+                    "false_omisson_rate_dif":[],
+                    "pred_equality": [],
+                    "binary_confusion_matrix":[],
+                    "ppv": [],
+                    "npv": [],
+                    "selection_rate":[],
+                    "accuracy": [],
+                    "f1-score":[]
+                    }
     
     # ------------------------------------------------------------------------
     def datasets_fairness_adult(self):
@@ -528,3 +560,118 @@ class Fairness:
 
         return metrics
     
+    # ------------------------------------------------------------------------
+    @staticmethod
+    def retorna_featuresFairness(nome:str) -> dict:
+
+        if nome == "adult":
+            features_protect = ["age","race","sex"]
+            privileged_groups = [{"age":1.0, "race":1, "sex":1.0}]
+            unprivileged_groups = [{"age":0.0, "race":0, "sex":0.0}]
+
+        elif nome == "ricci":
+            features_protect = ["Race"]
+            privileged_groups = [{"Race":1.0}]
+            unprivileged_groups = [{"Race":0.0}]
+
+        elif nome == "german_credit":
+            features_protect = ["age", "personal-status-and-sex"]
+            privileged_groups = [{"age":1.0,"personal-status-and-sex":1.0}]
+            unprivileged_groups = [{"age":0.0,"personal-status-and-sex":0.0}]
+
+        elif nome == "bank":
+            features_protect = ["age", "marital"]
+            privileged_groups = [{"age":0.0, "marital":1.0}]
+            unprivileged_groups = [{"age":1.0, "marital":0.0}]
+
+        elif nome == "credit_card":
+            features_protect = ["sex", "education","marriage"]
+            privileged_groups = [{"sex":2,"education":1.0,"marriage":2}]
+            unprivileged_groups = [{"sex":1,"education":0.0,"marriage":1}]
+
+        elif nome == "student_math" or nome == "student_port":
+            features_protect= ["sex", "age"]
+            privileged_groups = [{"sex":0.0, "age":0.0}]
+            unprivileged_groups = [{"sex":1.0, "age":1.0}]
+
+        elif nome == "compass_7k" or nome == "compass_4k":
+            features_protect = ["race", "sex"]
+            privileged_groups = [{"race":1, "sex":1.0}]
+            unprivileged_groups = [{"race":0, "sex":0.0}]
+
+        elif nome == "law":
+            features_protect = ["race","gender"]
+            privileged_groups = [{"race":1.0, "gender":1.0}]
+            unprivileged_groups = [{"race":0.0, "gender":0.0}]
+
+        elif nome == "diabetes":
+            features_protect = ["gender"]
+            privileged_groups = [{"gender":0.0}]
+            unprivileged_groups = [{"gender":1.0}]
+
+        elif nome == "kdd":
+            features_protect = ["sex","race"]
+            privileged_groups = [{"sex":0.0, "race":1.0}]
+            unprivileged_groups = [{"sex":1.0, "race":0.0}]
+
+        elif nome == "dutch":
+            features_protect = ["sex"]
+            privileged_groups = [{"sex":0.0}]
+            unprivileged_groups = [{"sex":1.0}]
+
+        return features_protect, privileged_groups, unprivileged_groups
+    
+    # ------------------------------------------------------------------------
+    @staticmethod
+    def choose_model_fair(classifier:str, sensitive_vals:list[str]):
+        match classifier:
+            case "gerry":
+                clf = GerryFairClassifier(C=1)
+            
+            case "meta":
+                clf = MetaFairClassifier(sensitive_attr="sex", #Só trata uma variável sensível por vez
+                                         type="sr",
+                                         seed=123)
+            
+            case "prejudice":
+                clf = PrejudiceRemover(class_attr="target")
+            
+            
+            case "adversarial":
+                clf = AdversarialDebiasing()
+
+        return clf
+
+    def calculate_metrics(self,
+                          nome:str, 
+                          fold:str, 
+                          classification_metric:ClassificationMetric, 
+                          y_true:np.ndarray, 
+                          y_pred:np.ndarray):
+        # Cálculo das métricas de fairness
+        self.results_metrics["dataset"].append(nome)
+        self.results_metrics["fold"].append(fold)
+        self.results_metrics["accuracy"].append(classification_metric.accuracy())
+        self.results_metrics["eq_odds"].append(classification_metric.equalized_odds_difference())
+        self.results_metrics["av_odds"].append(classification_metric.average_odds_difference())
+        self.results_metrics["av_pred_diff"].append(classification_metric.average_predictive_value_difference())
+        self.results_metrics["cof_variation_allgroups"].append(classification_metric.between_all_groups_coefficient_of_variation())
+        self.results_metrics["entropy_index_allgroups"].append(classification_metric.between_all_groups_generalized_entropy_index())
+        self.results_metrics["theil_index_allgroups"].append(classification_metric.between_all_groups_theil_index())
+        self.results_metrics["diff_bias_amplification"].append(classification_metric.differential_fairness_bias_amplification())
+        self.results_metrics["eq_opportunity"].append(classification_metric.equal_opportunity_difference())
+        self.results_metrics["stat_parity"].append(classification_metric.statistical_parity_difference())
+        self.results_metrics["error_rate"].append(classification_metric.error_rate_difference())
+        self.results_metrics["false_discovery_rate_dif"].append(classification_metric.false_discovery_rate_difference())
+        self.results_metrics["false_negative_rate_diff"].append(classification_metric.false_negative_rate_difference())
+        self.results_metrics["false_omisson_rate_dif"].append(classification_metric.false_omission_rate_difference())
+        self.results_metrics["pred_equality"].append(classification_metric.false_positive_rate_difference())
+        self.results_metrics["binary_confusion_matrix"].append(classification_metric.generalized_binary_confusion_matrix())
+        self.results_metrics["ppv"].append(classification_metric.positive_predictive_value())
+        self.results_metrics["npv"].append(classification_metric.negative_predictive_value())
+        self.results_metrics["selection_rate"].append(classification_metric.selection_rate())
+        
+        # Cálculo do F1-score
+        self.results_metrics["f1-score"].append(f1_score(y_true=y_true, y_pred=y_pred))
+
+                                            

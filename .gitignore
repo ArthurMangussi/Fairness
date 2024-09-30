@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+/DatasetsImputados
+/DatasetsFairness
+
 # Distribution / packaging
 .Python
 build/

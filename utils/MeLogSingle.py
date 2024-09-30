@@ -3,13 +3,13 @@
 import configparser
 import logging
 from datetime import datetime
-
+import os
 
 class MeLogger(logging.Logger):
     """Extensão da Classe Logger, customizada para a aplicação"""
 
     _instance = None
-
+    os.makedirs("./logs", exist_ok=True)
     # ---------------------------------------------------------------------------------------------
     def __new__(cls, *args, **kwargs):
         """Força a ter apenas uma instância Design pattern Singleton

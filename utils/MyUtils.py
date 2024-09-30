@@ -224,34 +224,7 @@ class MyPipeline:
                                 True,  True,  True,  True,  True,  True,  True,  True,  True,
                                 True,  True,  True,  True,  True,  True,  True,  True,  True,
                                 True,  True,  True,  True]}
-    # ------------------------------------------------------------------------
-    @staticmethod
-    def retorna_featuresFairness(nome:str) -> dict:
-
-        if nome == "adult":
-            features_protect = ["age","race","sex"]
-        elif nome == "ricci":
-            features_protect = ["Race"]
-        elif nome == "german_credit":
-            features_protect = ["age", "personal-status-and-sex"]
-        elif nome == "bank":
-            features_protect = ["age", "marital"]
-        elif nome == "credit_card":
-            features_protect = ["sex", "education","marriage"]
-        elif nome == "student_math" or nome == "student_port":
-            features_protect= ["sex", "age"]
-        elif nome == "compass_7k" or nome == "compass_4k":
-            features_protect = ["race", "sex"]
-        elif nome == "law":
-            features_protect = ["race","gender"]
-        elif nome == "diabetes":
-            features_protect = ["gender"]
-        elif nome == "kdd":
-            features_protect = ["sex","race"]
-        elif nome == "dutch":
-            features_protect = ["sex"]
-
-        return features_protect
+    
     
     # ------------------------------------------------------------------------
     @staticmethod
