@@ -11,7 +11,11 @@ from sklearn.model_selection import StratifiedKFold
 from aif360.metrics import ClassificationMetric
 from aif360.datasets import BinaryLabelDataset
 
-import os, multiprocessing
+import os
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
+sess = tf.compat.v1.Session()
 
 def processa_imputados_fairness(path:str, model_impt:str, nome_datasets:list, mecanismo:str, classifier:str):
 
@@ -19,6 +23,7 @@ def processa_imputados_fairness(path:str, model_impt:str, nome_datasets:list, me
     os.makedirs(f"./ResultadosFairML/{mecanismo}/{classifier}", exist_ok=True)
 
     _logger = MeLogger()
+    fairness_class = Fairness()
 
     for nome in nome_datasets: 
         (features_sensitive,
@@ -31,15 +36,10 @@ def processa_imputados_fairness(path:str, model_impt:str, nome_datasets:list, me
             df = imputed_dataset.copy()
             # Start the Cross-Validation to classification task
             fold = 0
-            cv = StratifiedKFold()
+            cv = StratifiedKFold(shuffle=True)
             X = df.drop(columns='target')
             y = df['target'].values
             x_cv = X.values
-
-            fairness_class = Fairness()
-            # Model to mitigation unfairness
-            clf = fairness_class.choose_model_fair(classifier=classifier,
-                                                   sensitive_vals=features_sensitive)
 
             for train_index, test_index in cv.split(x_cv, y):
                 _logger.info(f"{model_impt} = {nome} com md = {mr} no Fold = {fold} classifier = {classifier}")
@@ -71,42 +71,32 @@ def processa_imputados_fairness(path:str, model_impt:str, nome_datasets:list, me
                                                protected_attribute_names = features_sensitive
                                                )
 
-                clf.fit(df_aif360_train)
+                # Resetar o gráfico TensorFlow
+                tf.compat.v1.reset_default_graph()
 
-                data_debiasing_test  = clf.predict(df_aif360_test)
+                # Criar uma nova sessão TensorFlow dentro do bloco 'with'
+                with tf.compat.v1.Session() as sess:
+                    # Model to mitigation unfairness
+                    clf = fairness_class.choose_model_fair(classifier=classifier,
+                                                        unprivileged_groups=unprivileged_groups,
+                                                        privileged_groups=privileged_groups, 
+                                                        session = sess)
+                    clf.fit(df_aif360_train)
 
-                # Métricas de classificação
-                classification_metric = ClassificationMetric(df_aif360_test,
-                                                             data_debiasing_test,
-                                                             unprivileged_groups=unprivileged_groups,
-                                                             privileged_groups=privileged_groups)
+                    data_debiasing_test  = clf.predict(df_aif360_test)
+                    predict_labels = data_debiasing_test.labels
+                    
+                    # Métricas
+                    classification_metric = ClassificationMetric(df_aif360_test,
+                                                                data_debiasing_test,
+                                                                unprivileged_groups=unprivileged_groups,
+                                                                privileged_groups=privileged_groups)
 
-                # Type para biblioteca AI Fairness 360 da IBM
-                df_aif360_train = BinaryLabelDataset(df=X_treino_norm,
-                                                label_names = ["target"],
-                                                protected_attribute_names = features_sensitive
-                                                )
-                df_aif360_test = BinaryLabelDataset(df=X_teste_norm,
-                                                label_names = ["target"],
-                                                protected_attribute_names = features_sensitive
-                                                )
-
-                clf.fit(df_aif360_train)
-
-                data_debiasing_test  = clf.predict(df_aif360_test)
-                predict_labels = data_debiasing_test.labels
-                
-                # Métricas
-                classification_metric = ClassificationMetric(df_aif360_test,
-                                                            data_debiasing_test,
-                                                            unprivileged_groups=unprivileged_groups,
-                                                            privileged_groups=privileged_groups)
-
-                fairness_class.calculate_metrics(nome=nome,
-                                                fold=fold,
-                                                classification_metric=classification_metric,
-                                                y_true=y_teste,
-                                                y_pred=predict_labels)
+                    fairness_class.calculate_metrics(nome=nome,
+                                                    fold=fold,
+                                                    classification_metric=classification_metric,
+                                                    y_true=y_teste,
+                                                    y_pred=predict_labels)
 
                 fold += 1
 
@@ -134,19 +124,18 @@ if __name__ == "__main__":
                 "law"              
                 ]
 
-    mecanismo = "MAR-random-"
-    classifier_str = "gerry"
+    mecanismo = "MAR-random"
+    classifier_str = "adversarial"
+    
+    # processa_imputados_fairness(path,"mean",datasets,mecanismo,classifier_str)
+    # processa_imputados_fairness(path,"customKNN",datasets,mecanismo,classifier_str)
+    # processa_imputados_fairness(path,"mice",datasets,mecanismo,classifier_str)
+    # processa_imputados_fairness(path,"pmivae",datasets,mecanismo,classifier_str)
+    # processa_imputados_fairness(path,"softImpute",datasets,mecanismo,classifier_str)
+    processa_imputados_fairness(path,"gain",datasets,mecanismo,classifier_str)
 
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-
-        args_list = [(path,"mean",datasets,mecanismo,classifier_str),
-                     (path,"softImpute",datasets,mecanismo,classifier_str),
-                     (path,"KNN",datasets,mecanismo,classifier_str),
-                     (path,"mice",datasets,mecanismo,classifier_str),
-                     (path,"pmivae",datasets,mecanismo,classifier_str),
-                     (path,"gain",datasets,mecanismo,classifier_str)
-                     ]
-        
-        pool.starmap(processa_imputados_fairness,args_list)
+    # gerry, prejudice, meta, adversarial
+     
+    
 
                 

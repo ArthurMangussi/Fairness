@@ -10,6 +10,10 @@ from aif360.metrics import ClassificationMetric
 from aif360.datasets import BinaryLabelDataset
 
 import os               
+import tensorflow as tf
+tf.compat.v1.disable_eager_execution()
+
+sess = tf.compat.v1.Session()
 
 def processa_imputados_fairness(classifier:str,
                                 tabela_resultados:dict):
@@ -32,10 +36,6 @@ def processa_imputados_fairness(classifier:str,
         X = df.drop(columns='target')
         y = df['target'].values
         x_cv = X.values
-        
-        # Model to mitigation unfairness
-        clf = fairness_class.choose_model_fair(classifier=classifier,
-                                               sensitive_vals=features_sensitive)
 
         for train_index, test_index in cv.split(x_cv, y):
             _logger.info(f"{nome} Fold = {fold} classifier = {classifier}")
@@ -67,22 +67,32 @@ def processa_imputados_fairness(classifier:str,
                                             protected_attribute_names = features_sensitive
                                             )
 
-            clf.fit(df_aif360_train)
+            # Resetar o gráfico TensorFlow
+            tf.compat.v1.reset_default_graph()
 
-            data_debiasing_test  = clf.predict(df_aif360_test)
-            predict_labels = data_debiasing_test.labels
-            
-            # Métricas
-            classification_metric = ClassificationMetric(df_aif360_test,
-                                                        data_debiasing_test,
-                                                        unprivileged_groups=unprivileged_groups,
-                                                        privileged_groups=privileged_groups)
+            # Criar uma nova sessão TensorFlow dentro do bloco 'with'
+            with tf.compat.v1.Session() as sess:
+                # Model to mitigation unfairness
+                clf = fairness_class.choose_model_fair(classifier=classifier,
+                                                    unprivileged_groups=unprivileged_groups,
+                                                    privileged_groups=privileged_groups, 
+                                                    session = sess)
+                clf.fit(df_aif360_train)
 
-            fairness_class.calculate_metrics(nome=nome,
-                                             fold=fold,
-                                             classification_metric=classification_metric,
-                                             y_true=y_teste,
-                                             y_pred=predict_labels)
+                data_debiasing_test  = clf.predict(df_aif360_test)
+                predict_labels = data_debiasing_test.labels
+                
+                # Métricas
+                classification_metric = ClassificationMetric(df_aif360_test,
+                                                            data_debiasing_test,
+                                                            unprivileged_groups=unprivileged_groups,
+                                                            privileged_groups=privileged_groups)
+
+                fairness_class.calculate_metrics(nome=nome,
+                                                fold=fold,
+                                                classification_metric=classification_metric,
+                                                y_true=y_teste,
+                                                y_pred=predict_labels)
 
 
             fold += 1
@@ -99,4 +109,4 @@ if __name__ == "__main__":
     fairness = Fairness()
     tabela_resultados = fairness.cria_tabela_fairness(datasets)
 
-    processa_imputados_fairness("prejudice", tabela_resultados) 
+    processa_imputados_fairness("adversarial", tabela_resultados) 

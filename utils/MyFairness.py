@@ -30,7 +30,7 @@ from aif360.metrics import ClassificationMetric
 
 import pandas as pd
 import numpy as np
-
+import tensorflow as tf
 
 class Fairness:
     def __init__(self):
@@ -47,7 +47,7 @@ class Fairness:
                     "cof_variation_allgroups":[],
                     "entropy_index_allgroups":[],
                     "theil_index_allgroups":[],
-                    "diff_bias_amplification":[],
+                    # "diff_bias_amplification":[],
                     "eq_opportunity": [],
                     "stat_parity": [],
                     "error_rate":[],
@@ -62,7 +62,8 @@ class Fairness:
                     "accuracy": [],
                     "f1-score":[]
                     }
-    
+
+        self.sess = tf.compat.v1.Session()
     # ------------------------------------------------------------------------
     def datasets_fairness_adult(self):
         # Dataset Adult
@@ -623,7 +624,10 @@ class Fairness:
     
     # ------------------------------------------------------------------------
     @staticmethod
-    def choose_model_fair(classifier:str, sensitive_vals:list[str]):
+    def choose_model_fair(classifier:str,
+                          unprivileged_groups,
+                          privileged_groups,
+                          session):
         match classifier:
             case "gerry":
                 clf = GerryFairClassifier(C=1)
@@ -638,10 +642,16 @@ class Fairness:
             
             
             case "adversarial":
-                clf = AdversarialDebiasing()
+                    clf = AdversarialDebiasing(unprivileged_groups=unprivileged_groups,
+                                            privileged_groups=privileged_groups,
+                                            seed=42,
+                                            scope_name='debiased_classifier',
+                                            sess=session
+                                            )
 
         return clf
 
+    # ------------------------------------------------------------------------
     def calculate_metrics(self,
                           nome:str, 
                           fold:str, 
@@ -658,7 +668,7 @@ class Fairness:
         self.results_metrics["cof_variation_allgroups"].append(classification_metric.between_all_groups_coefficient_of_variation())
         self.results_metrics["entropy_index_allgroups"].append(classification_metric.between_all_groups_generalized_entropy_index())
         self.results_metrics["theil_index_allgroups"].append(classification_metric.between_all_groups_theil_index())
-        self.results_metrics["diff_bias_amplification"].append(classification_metric.differential_fairness_bias_amplification())
+        # self.results_metrics["diff_bias_amplification"].append(classification_metric.differential_fairness_bias_amplification())
         self.results_metrics["eq_opportunity"].append(classification_metric.equal_opportunity_difference())
         self.results_metrics["stat_parity"].append(classification_metric.statistical_parity_difference())
         self.results_metrics["error_rate"].append(classification_metric.error_rate_difference())
