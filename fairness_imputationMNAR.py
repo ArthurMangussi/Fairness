@@ -156,7 +156,7 @@ def pipeline_fairness(model_impt:str, mecanismo:str, tabela_resultados:dict):
 
 if __name__ == "__main__":
 
-    diretorio = "/home/cruncher/Desktop/@MestradoArthur/DatasetsFairness"
+    diretorio = "./DatasetsFairness"
     datasets = MyPipeline.carrega_datasets(diretorio)
 
     fairness = Fairness()
@@ -171,13 +171,13 @@ if __name__ == "__main__":
 
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
 
-        args_list = [#("mean",mecanismo,tabela_resultados),
-                     #("customKNN",mecanismo,tabela_resultados),
-                     #("mice",mecanismo,tabela_resultados),
+        args_list = [("mean",mecanismo,tabela_resultados),
+                     ("customKNN",mecanismo,tabela_resultados),
+                     ("mice",mecanismo,tabela_resultados),
                      ("pmivae",mecanismo,tabela_resultados)
-                     #("saei",mecanismo,tabela_resultados),
-                     #("softImpute",mecanismo,tabela_resultados),
-                     #("gain",mecanismo,tabela_resultados)
+                     ("saei",mecanismo,tabela_resultados),
+                     ("softImpute",mecanismo,tabela_resultados),
+                     ("gain",mecanismo,tabela_resultados)
                      ]
         
         pool.starmap(pipeline_fairness,args_list)

@@ -1,24 +1,7 @@
 import os 
 import pandas as pd
-from utils.MyUtils import MyPipeline
 
-#from utils.MyPreprocessing import PreprocessingDatasets
-
-#path = "/home/cruncher/Desktop/@MestradoArthur/Fairness/Datasets/MAR-random_Multivariado"
-#arqs = os.listdir(path)
-#le = PreprocessingDatasets()
-
-#for arq in arqs:
-#    nome = arq.split("_")[0]
-#    if nome == "german":
-#        df = pd.read_csv(os.path.join(path, arq))
-#        df = le.label_encoder(df, ["target"])
-#        df.to_csv(os.path.join(path,arq))
-
-#######################################################################################################
-# Salva as folds unificadas
-
-path = "/home/cruncher/Desktop/@MestradoArthur/Fairness/Datasets/MAR-random_MultivariadoAll"
+path = "./Fairness/Datasets/MAR-random_MultivariadoAll"
 
 
 for name_dataset in ["german_credit",

@@ -56,7 +56,7 @@ def pipeline_fairness(model_impt:str, mecanismo:str, tabela_resultados:dict):
                     )
                     X_teste_norm = PreprocessingDatasets.normaliza_dados(scaler, X_teste)
 
-                    # Geração dos missing values em cada conjunto de forma independente
+                    # Geraï¿½ï¿½o dos missing values em cada conjunto de forma independente
                     impt_md_train = mMAR(X=X_treino_norm, 
                                          y=y_treino, 
                                          n_xmiss=X_treino.shape[1]+1
@@ -101,7 +101,7 @@ def pipeline_fairness(model_impt:str, mecanismo:str, tabela_resultados:dict):
                         f'Tempo de treinamento para fold = {fold} foi = {fim_imputation-inicio_imputation:.3f} s\n'
                     )
 
-                    # Imputação dos missing values nos conjuntos de treino e teste
+                    # Imputaï¿½ï¿½o dos missing values nos conjuntos de treino e teste
                     try:
                         
                         output_md_test = model.transform(
@@ -113,12 +113,12 @@ def pipeline_fairness(model_impt:str, mecanismo:str, tabela_resultados:dict):
                         output_md_test = model.predict(X_teste_norm_md.iloc[:, :].values)
 
                     _logger.info(np.isnan(output_md_test))
-                    #Encode das variáveis categóricas
+                    #Encode das variï¿½veis categï¿½ricas
                     df_output_md_teste = pd.DataFrame(output_md_test, columns=X.columns)
                     output_md_test = MyPipeline.encode_features_categoricas(nome, df_output_md_teste)
                     _logger.info(output_md_test.isna().sum())
                         
-                    # Calculando MAE para a imputação no conjunto de teste
+                    # Calculando MAE para a imputaï¿½ï¿½o no conjunto de teste
                     (
                         mae_teste_mean,
                         mae_teste_std,
@@ -141,7 +141,7 @@ def pipeline_fairness(model_impt:str, mecanismo:str, tabela_resultados:dict):
 
         resultados_final = AnalysisResults.extrai_resultados(tabela_resultados)
 
-        # Resultados da imputação
+        # Resultados da imputaï¿½ï¿½o
         resultados_mecanismo = (
             AnalysisResults.calcula_metricas_estatisticas_resultados(
                 resultados_final, 1, fold
@@ -156,7 +156,7 @@ def pipeline_fairness(model_impt:str, mecanismo:str, tabela_resultados:dict):
 
 if __name__ == "__main__":
 
-    diretorio = "/home/cruncher/Desktop/@MestradoArthur/DatasetsFairness"
+    diretorio = "./DatasetsFairness"
     datasets = MyPipeline.carrega_datasets(diretorio)
 
     fairness = Fairness()
@@ -164,19 +164,19 @@ if __name__ == "__main__":
 
     mecanismo = "MAR-random"
 
-    # Cria diretórios para salvar os resultados do experimento
+    # Cria diretï¿½rios para salvar os resultados do experimento
     os.makedirs(f"./Fairness/Tempos/{mecanismo}_Multivariado", exist_ok=True)
     os.makedirs(f"./Fairness/Datasets/{mecanismo}_Multivariado", exist_ok=True)
     os.makedirs(f"./Fairness/Resultados/{mecanismo}_Multivariado", exist_ok=True)
 
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
 
-        args_list = [#("mean",mecanismo,tabela_resultados),
-                     #("customKNN",mecanismo,tabela_resultados),
-                     #("mice",mecanismo,tabela_resultados),
-                     #("pmivae",mecanismo,tabela_resultados),
-                     #("saei",mecanismo,tabela_resultados),
-                     #("softImpute",mecanismo,tabela_resultados),
+        args_list = [("mean",mecanismo,tabela_resultados),
+                     ("customKNN",mecanismo,tabela_resultados),
+                     ("mice",mecanismo,tabela_resultados),
+                     ("pmivae",mecanismo,tabela_resultados),
+                     ("saei",mecanismo,tabela_resultados),
+                     ("softImpute",mecanismo,tabela_resultados),
                      ("gain",mecanismo,tabela_resultados)
                      ]
         
